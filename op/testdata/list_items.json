@@ -1,0 +1,25 @@
+[
+  {
+    "uuid": "23svoxwakbdlxem44qiv6jlmji",
+    "templateUuid": "001",
+    "trashed": "N",
+    "createdAt": "2018-05-11T13:46:45Z",
+    "updatedAt": "2018-05-11T15:49:44Z",
+    "changerUuid": "QU4C3EC3FJG3TE552ZG4L2LG3U",
+    "itemVersion": 2,
+    "vaultUuid": "jujiaixgowzoqkud3cwm4mzaau",
+    "overview": {
+      "URLs": [
+        {
+          "u": "https://www.uber.com/log-in"
+        }
+      ],
+      "ainfo": "nicpon.michal@gmail.com",
+      "pbe": 78.61153977626901,
+      "pgrng": true,
+      "ps": 100,
+      "title": "Uber",
+      "url": "https://www.uber.com/log-in"
+    }
+  }
+]
