@@ -83,9 +83,9 @@ func IsUnauthorizedError(err error) bool {
 func IsInvalidCredentialsError(err error) bool {
 	if operr, ok := errors2.Cause(err).(*Error); ok {
 		message := strings.ToLower(operr.Message)
-		return strings.Contains(message, "invalid account key") || // bad account key
-			strings.Contains(message, "invalid request parameters") || // bad email
-			strings.Contains(message, "authenticated required") // bad password
+		return strings.Contains(message, "invalid account key") || // invalid account key format
+			strings.Contains(message, "invalid request parameters") || // invalid email format
+			strings.Contains(message, "authentication required") // wrong password
 	}
 	return false
 }

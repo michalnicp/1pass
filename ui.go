@@ -141,18 +141,7 @@ func UI(window *glfw.Window, ctx *nk.Context, state *UIState) {
 
 // Signin draws the signin view.
 func Signin(window *glfw.Window, ctx *nk.Context, state *UIState) {
-	var focusPassword bool
-	state.signinOnce.Do(func() {
-		if session != nil &&
-			session.Email != "" &&
-			session.Token == "" {
-			focusPassword = true
-		}
-	})
-
-	if window.GetKey(glfw.KeyEnter) == glfw.Press && !state.isSigningIn {
-		log.Println("signing in")
-		state.statusText = "signing in"
+	submit := func() {
 		state.isSigningIn = true
 
 		signinAddress := string(state.signinAddress[:state.signinAddressLen])
@@ -169,21 +158,22 @@ func Signin(window *glfw.Window, ctx *nk.Context, state *UIState) {
 			session, err = op.Signin(signinAddress, email, secretKey, masterPassword)
 			if err != nil {
 				log.Printf("signin: %v", err)
-				if op.IsInvalidCredentialsError(err) {
-					state.queue(func() {
-						state.statusText = "invalid credentials"
-					})
-				}
+				state.queue(func() {
+					state.statusText = fmt.Sprintf("signin: %v", err)
+				})
 				return
 			}
 		}()
 	}
 
-	width, height := window.GetSize()
+	if window.GetKey(glfw.KeyEnter) == glfw.Press && !state.isSigningIn {
+		submit()
+	}
 
+	width, height := window.GetSize()
 	bounds := nk.NkRect(0, 0, float32(width), float32(height))
-	if nk.NkBegin(ctx, "", bounds, nk.WindowNoScrollbar) > 0 {
-		nk.NkLayoutRowDynamic(ctx, 30, 1)
+	if nk.NkBegin(ctx, "signin", bounds, nk.WindowNoScrollbar) > 0 {
+		nk.NkLayoutRowDynamic(ctx, 0, 1)
 
 		nk.NkLabel(ctx, "Sign in to your 1Password account", nk.TextLeft)
 
@@ -223,9 +213,13 @@ func Signin(window *glfw.Window, ctx *nk.Context, state *UIState) {
 		state.tab(func() {
 			nk.NkEditFocus(ctx, nk.EditField|nk.EditGotoEndOnActivate)
 		})
-		if focusPassword {
-			nk.NkEditFocus(ctx, nk.EditField|nk.EditGotoEndOnActivate)
-		}
+		state.signinOnce.Do(func() {
+			if session != nil &&
+				session.Email != "" &&
+				session.Token == "" {
+				nk.NkEditFocus(ctx, nk.EditField|nk.EditGotoEndOnActivate)
+			}
+		})
 		nk.NkEditString(
 			ctx,
 			nk.EditField,
@@ -243,30 +237,11 @@ func Signin(window *glfw.Window, ctx *nk.Context, state *UIState) {
 
 		nk.NkLayoutRowDynamic(ctx, 30, 1)
 		if nk.NkButtonLabel(ctx, "Sign In") > 0 {
-			log.Println("signing in")
-			state.isSigningIn = true
-
-			signinAddress := string(state.signinAddress[:state.signinAddressLen])
-			email := string(state.email[:state.emailLen])
-			secretKey := string(state.secretKey[:state.secretKeyLen])
-			masterPassword := string(state.masterPassword[:state.masterPasswordLen])
-
-			go func() {
-				defer state.queue(func() {
-					state.isSigningIn = false
-				})
-
-				var err error
-				session, err = op.Signin(signinAddress, email, secretKey, masterPassword)
-				if err != nil {
-					log.Printf("signin: %v", err)
-					return
-				}
-			}()
+			submit()
 		}
-	}
 
-	nk.NkEnd(ctx)
+		nk.NkEnd(ctx)
+	}
 }
 
 // Search draws the search view.
@@ -352,7 +327,6 @@ func Search(window *glfw.Window, ctx *nk.Context, state *UIState) {
 						return
 					}
 
-					log.Printf("search returned %d items", len(results))
 					state.queue(func() {
 						select {
 						case <-ctx.Done():

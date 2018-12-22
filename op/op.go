@@ -69,23 +69,11 @@ func NewSessionFromConfig() (*Session, error) {
 		if account.Shorthand == cfg.LatestSignin {
 			name := "OP_SESSION_" + cfg.LatestSignin
 			token := os.Getenv(name)
-			if token == "" {
-				log.Printf("session token not found: %s is empty", name)
-			}
 
 			session, err := NewSession(account.URL, account.Email, account.AccountKey, token)
 			if err != nil {
 				return nil, errors.Wrap(err, "create session")
 			}
-
-			// Check if session is valid.
-			cmd := exec.Command("op", "get", "account", "--session="+session.Token)
-
-			if _, err := cmd.Output(); err != nil {
-				return nil, fromExitError(err)
-			}
-
-			session.expiry = time.Now().Add(30 * time.Minute)
 
 			return session, nil
 		}
@@ -122,7 +110,26 @@ func Signin(signinAddress, email, secretKey, masterPassword string) (*Session, e
 		return nil, errors.Wrap(err, "create session")
 	}
 
+	session.refresh()
+
 	return session, nil
+}
+
+func (s *Session) refresh() error {
+	if s.Token == "" {
+		return errors.New("session token is empty")
+	}
+
+	// Refresh the session by calling op. This command is the least expensive to call.
+	cmd := exec.Command("op", "get", "account", "--session="+s.Token)
+
+	if _, err := cmd.Output(); err != nil {
+		return fromExitError(err)
+	}
+
+	s.expiry = time.Now().Add(30 * time.Minute)
+
+	return nil
 }
 
 func (s *Session) Valid() bool {

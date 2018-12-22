@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"runtime"
 	"sync"
@@ -11,8 +10,8 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/golang-ui/nuklear/nk"
-	"github.com/gotk3/gotk3/gtk"
 	"github.com/michalnicp/1pass/op"
+	"github.com/michalnicp/1pass/tray"
 	"github.com/pkg/errors"
 )
 
@@ -29,31 +28,13 @@ var (
 	session *op.Session
 )
 
-func init() {
-	runtime.LockOSThread()
-}
-
 func main() {
+	runtime.LockOSThread()
+
 	var code int
 	defer func() { os.Exit(code) }()
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
-	ln, err := net.Listen("unix", "/tmp/1pass.sock")
-	if err != nil {
-		log.Printf("listen error: %v", err)
-	}
-	defer ln.Close()
-
-	go func() {
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				log.Printf("accept connection: %v", err)
-				continue
-			}
-		}
-	}()
 
 	// Initialize glfw.
 	if err := glfw.Init(); err != nil {
@@ -70,13 +51,22 @@ func main() {
 	glfw.WindowHint(glfw.Floating, glfw.True)
 	glfw.WindowHint(glfw.Decorated, glfw.False)
 	glfw.WindowHint(glfw.Visible, glfw.False) // Show window after centering it.
+
 	window, err := glfw.CreateWindow(windowWidth, windowHeight, "1pass", nil, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "create window: %v", err)
 		code = 1
 		return
 	}
+
 	window.MakeContextCurrent()
+
+	// Hide the window when it loses focus.
+	window.SetFocusCallback(func(w *glfw.Window, focused bool) {
+		if !focused {
+			window.Hide()
+		}
+	})
 
 	// Center and show the window.
 	centerWindow(window)
@@ -100,12 +90,8 @@ func main() {
 		font = sansFont
 	}
 
-	// Initialize gtk.
-	gtk.Init(nil)
-
-	// Create tray icon.
-	activate := func() { toggleWindow(window) }
-	NewTray("1pass", activate)
+	// Initialize system tray icon.
+	tray.Init()
 
 	// Read 1Password config and try to load existing session.
 	session, err = op.NewSessionFromConfig()
@@ -127,7 +113,7 @@ func main() {
 		glfw.PollEvents()
 
 		// Run the gtk main loop without blocking.
-		gtk.MainIterationDo(false)
+		tray.Loop()
 
 		// Draw the ui.
 		UI(window, ctx, state)
